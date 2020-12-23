@@ -15,16 +15,16 @@ type Flat struct {
 	Price        string
 	Sqft_m2      string
 	Rooms        string
-	Toilets		 string
-	// Area
-	Elevator     string  // No or Yes
-	Parking      string  // No or Yes
-	Heating      string  // No or Yes
-	CoolAir		 string  // No or Yes
+	Toilets      string
+	Area         string
+	Elevator     string // No or Yes
+	Parking      string // No or Yes
+	Heating      string // No or Yes
+	CoolAir      string // No or Yes
 	RatioEurM    string
-	Pool         string   // No or Yes
-	Construction string  // new or Not new
-	Balcony      string  // No or Yes
+	Pool         string // No or Yes
+	Construction string // new or Not new
+	Balcony      string // No or Yes
 }
 
 var output []string
@@ -44,12 +44,10 @@ func main() {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	writer.Write([]string{"ID", "Price (EUR)", "Sqft_m2", "Rooms", "Toilets", "Elevator", "Parking", "Heating", "CoolAir", "RatioEurM", "Construction", "Balcony"})
+	writer.Write([]string{"ID", "Price", "Sqft_m2", "RatioEurM", "Rooms", "Toilets", "Area", "Elevator", "Parking", "Heating", "CoolAir", "Construction", "Balcony"})
 
 	// Instantiate default collector
-	c := colly.NewCollector(
-
-	)
+	c := colly.NewCollector()
 
 	// On every a element which has href attribute call callback
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -64,32 +62,52 @@ func main() {
 
 	c.OnHTML(`ul.feature-container`, func(e *colly.HTMLElement) {
 
+		flat.Price = ""
+		flat.Sqft_m2 = ""
+
 		parameters := strings.Split(e.ChildText("li.feature"), "\n")
-		
-		for _,k := range parameters {
+
+		for _, k := range parameters {
 			switch {
+			case strings.Contains(k, "€/m2"):
+				fmt.Println("\nThis is the RatioEurM: ", k)
+				k := strings.TrimSpace(k)
+				flat.RatioEurM = k
 			case strings.HasSuffix(k, "€"):
 				fmt.Println("\nThis is the price:", k)
 				flat.Price = k
-			case strings.Contains(k, "€/m2"):
-				fmt.Println("\nThis is the RatioEurM: ",k)
-				k := strings.TrimSpace(k)
-				flat.RatioEurM = k
 			case strings.Contains(k, "m2"):
 				fmt.Println("\nThis is the Square meters:", k)
 				k := strings.TrimSpace(k)
 				flat.Sqft_m2 = k
-
 			}
 		}
 
+		flat.Balcony = ""
+		flat.Parking = ""
+		flat.Elevator = ""
+		flat.Construction = ""
+		flat.Heating = ""
+		flat.Toilets = ""
+		flat.CoolAir = ""
+		flat.Rooms = ""
+		flat.Area = ""
 
+	})
+
+	c.OnHTML(`article.location`, func(e *colly.HTMLElement) {
+
+		flat.Area = e.ChildText("a.jqVerMapaZonaTooltip")
+
+		fmt.Println("The Area is:", flat.Area)
 
 	})
 
 	c.OnHTML(`section.detail`, func(e *colly.HTMLElement) {
 
 		name := e.Request.URL.Path
+
+		fmt.Println("This is the url:", name)
 
 		re := regexp.MustCompile(`.*-(i.*).htm.*`)
 
@@ -103,16 +121,20 @@ func main() {
 
 		// fmt.Println("this is the ID of the flat\n", flat.ID)
 
+		fmt.Println("the value of balcony is:", flat.Balcony)
 
-		for _,k := range parameters {
+		for _, k := range parameters {
 			switch {
 			case strings.HasSuffix(k, "habitaciones"):
 				fmt.Println("\nThis is the number of rooms:", k)
 				k := strings.TrimSpace(k)
 				flat.Rooms = k
-/*			case strings.Contains(k, "Superficie"):
-				fmt.Println("\nThis is the Square meters:", k)*/
+			case strings.HasSuffix(k, "habitación"):
+				fmt.Println("\nThis is the number of individual rooms:", k)
+				k := strings.TrimSpace(k)
+				flat.Rooms = k
 			case strings.Contains(k, "Terraza"):
+				fmt.Println("The balcony string is:", k)
 				fmt.Println("\nBalcony: Yes")
 				flat.Balcony = "Yes"
 			case strings.HasSuffix(k, "Baños"):
@@ -132,12 +154,21 @@ func main() {
 			case strings.Contains(k, "Sin plaza parking"):
 				fmt.Println("\nParking: No")
 				flat.Parking = "No"
+			case strings.Contains(k, "Plaza parking"):
+				fmt.Println("\nParking: YES")
+				flat.Parking = "Yes"
 			case strings.Contains(k, "Calefacción"):
 				fmt.Println("\nHeating: Yes")
 				flat.Heating = "Yes"
 			case strings.Contains(k, "Obra nueva"):
 				fmt.Println("\nConstruction: New")
 				flat.Construction = "New"
+			case strings.Contains(k, "Ascensor"):
+				fmt.Println("\nAscensor: YES")
+				flat.Elevator = "Yes"
+			case strings.Contains(k, "Sin ascensor"):
+				fmt.Println("\nAscensor: NO")
+				flat.Elevator = "No"
 			}
 		}
 
@@ -146,7 +177,8 @@ func main() {
 		}
 
 		if flat.Elevator == "" {
-			flat.Elevator = "Yes"
+			fmt.Println("\nAscensor: No")
+			flat.Elevator = "No"
 		}
 
 		if flat.Heating == "" {
@@ -158,20 +190,18 @@ func main() {
 		}
 
 		if flat.Balcony == "" {
+			fmt.Println("\nBalcony: NO")
 			flat.Balcony = "No"
 		}
 
+
 		//writer.Write([]string{"ID", "Price (EUR)", "Sqft_m2", "Rooms", "Toilets", "Elevator", "Parking", "Heating", "CoolAir", "RatioEurM", "Construction", "Balcony"})
 
-
-		output = []string{flat.ID, flat.Price, flat.Sqft_m2, flat.Rooms, flat.Toilets, flat.Elevator, flat.Parking, flat.Heating, flat.CoolAir, flat.RatioEurM, flat.Construction, flat.Balcony}
+		output = []string{flat.ID, flat.Price, flat.Sqft_m2, flat.RatioEurM, flat.Rooms, flat.Toilets, flat.Area, flat.Elevator, flat.Parking, flat.Heating, flat.CoolAir,  flat.Construction, flat.Balcony}
 
 		fmt.Println("escribiendo en output", output)
 
 		writer.Write(output)
-
-
-
 
 	})
 
@@ -187,7 +217,5 @@ func main() {
 	c.Visit("https://www.habitaclia.com/viviendas-en-barcelones.htm")
 
 	log.Printf("Scraping finished, check file %q for results\n", fName)
-
-
 
 }
