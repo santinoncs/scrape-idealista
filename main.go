@@ -22,16 +22,18 @@ type Flat struct {
 	Heating      string // No or Yes
 	CoolAir      string // No or Yes
 	RatioEurM    string
-	Pool         string // No or Yes
 	Construction string // new or Not new
 	Balcony      string // No or Yes
+	Pool         string // No or Yes
+	PublicTr     string // No or Yes
+	Yard         string // No or Yes
 }
 
 var output []string
 
 func main() {
 
-	fName := "pisos.csv"
+	fName := "pisos_hospitalet.csv"
 	file, err := os.Create(fName)
 	if err != nil {
 		log.Fatalf("Cannot create file %q: %s\n", fName, err)
@@ -44,7 +46,7 @@ func main() {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	writer.Write([]string{"ID", "Price", "Sqft_m2", "RatioEurM", "Rooms", "Toilets", "Area", "Elevator", "Parking", "Heating", "CoolAir", "Construction", "Balcony"})
+	writer.Write([]string{"ID", "Price", "Sqft_m2", "RatioEurM", "Rooms", "Toilets", "Area", "Elevator", "Parking", "Heating", "CoolAir", "Construction", "Balcony", "Pool", "PublicTr", "Yard"})
 
 	// Instantiate default collector
 	c := colly.NewCollector()
@@ -92,6 +94,9 @@ func main() {
 		flat.CoolAir = ""
 		flat.Rooms = ""
 		flat.Area = ""
+		flat.Pool = ""
+		flat.PublicTr = ""
+		flat.Yard = ""
 
 	})
 
@@ -157,18 +162,30 @@ func main() {
 			case strings.Contains(k, "Plaza parking"):
 				fmt.Println("\nParking: YES")
 				flat.Parking = "Yes"
+			case strings.Contains(k, "Sin calefacción"):
+				fmt.Println("\nHeating: NO")
+				flat.Heating = "No"
 			case strings.Contains(k, "Calefacción"):
 				fmt.Println("\nHeating: Yes")
 				flat.Heating = "Yes"
 			case strings.Contains(k, "Obra nueva"):
 				fmt.Println("\nConstruction: New")
 				flat.Construction = "New"
-			case strings.Contains(k, "Ascensor"):
-				fmt.Println("\nAscensor: YES")
-				flat.Elevator = "Yes"
 			case strings.Contains(k, "Sin ascensor"):
 				fmt.Println("\nAscensor: NO")
 				flat.Elevator = "No"
+			case strings.Contains(k, "Ascensor"):
+				fmt.Println("\nAscensor: YES")
+				flat.Elevator = "Yes"
+			case strings.HasPrefix(k, "Piscina"):
+				fmt.Println("\nPiscina: YES")
+				flat.Pool = "Yes"
+			case strings.Contains(k, "Cerca de transporte público"):
+				fmt.Println("\nTransporte Publico: YES")
+				flat.PublicTr = "Yes"
+			case strings.Contains(k, "Jardín"):
+				fmt.Println("\nJardin: YES")
+				flat.Yard = "Yes"
 			}
 		}
 
@@ -194,10 +211,25 @@ func main() {
 			flat.Balcony = "No"
 		}
 
+		if flat.Pool == "" {
+			fmt.Println("\nPool: NO")
+			flat.Pool = "No"
+		}
 
-		//writer.Write([]string{"ID", "Price (EUR)", "Sqft_m2", "Rooms", "Toilets", "Elevator", "Parking", "Heating", "CoolAir", "RatioEurM", "Construction", "Balcony"})
+		if flat.PublicTr == "" {
+			fmt.Println("\nPublic Transport: NO")
+		    flat.PublicTr = "No"
+		}
 
-		output = []string{flat.ID, flat.Price, flat.Sqft_m2, flat.RatioEurM, flat.Rooms, flat.Toilets, flat.Area, flat.Elevator, flat.Parking, flat.Heating, flat.CoolAir,  flat.Construction, flat.Balcony}
+		if flat.Yard == "" {
+			fmt.Println("\nYard: NO")
+			flat.Yard = "No"
+		}
+
+
+
+		output = []string{flat.ID, flat.Price, flat.Sqft_m2, flat.RatioEurM, flat.Rooms, flat.Toilets, flat.Area, flat.Elevator, flat.Parking,
+			flat.Heating, flat.CoolAir,  flat.Construction, flat.Balcony, flat.Pool, flat.PublicTr, flat.Yard}
 
 		fmt.Println("escribiendo en output", output)
 
@@ -213,8 +245,8 @@ func main() {
 		fmt.Println("Request URL:", r.Request.URL, "failed with response:", r.StatusCode, "\nError:", err)
 	})
 
-	//c.Visit("https://www.idealista.com/venta-viviendas/barcelona/eixample/l-antiga-esquerra-de-l-eixample/")
-	c.Visit("https://www.habitaclia.com/viviendas-en-barcelones.htm")
+	c.Visit("https://www.habitaclia.com/viviendas-hospitalet_de_llobregat.htm")
+	//c.Visit("https://www.habitaclia.com/viviendas-en-barcelones.htm")
 
 	log.Printf("Scraping finished, check file %q for results\n", fName)
 
